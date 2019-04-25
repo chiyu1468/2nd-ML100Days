@@ -30,5 +30,6 @@ np.corrcoef(x, y)
 #%%
 # 將分布畫出來看看吧
 plt.scatter(x, y)
+plt.show()
 
 
