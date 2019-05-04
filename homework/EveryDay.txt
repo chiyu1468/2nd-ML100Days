@@ -1,0 +1,55 @@
+
+===================================
+Day 11 頗完整的例子
+------
+plt.style.use('ggplot')
+pd.cut
+pd.groupby
+sns.barplot
+
+===================================
+Day 12 13 
+------
+沒用的 BJ4
+
+===================================
+Day 14
+------
+subplot 排版
+
+===================================
+Day 15 畫圖
+------
+Heatmap
+seborn.PairGrid
+
+===================================
+Day 16 頗完整的例子
+------
+LabelEncoder OneHotEncoder 
+填補器:設定缺失值補
+縮放器:設定特徵縮放
+LogisticRegression
+
+===================================
+Day 17
+------
+estimator = LogisticRegression()
+estimator.fit(train_X, train_Y)
+pred = estimator.predict(test_X)
+
+
+===================================
+Day 18
+------
+Pandas DataFrame 分別取出 int64, float64, object 三種類型
+
+
+===================================
+Day 19
+------
+# 檢查欄位缺值數量 (去掉.head()可以顯示全部)
+df.isnull().sum().sort_values(ascending=False).head()
+概念:
+https://morvanzhou.github.io/tutorials/machine-learning/sklearn/3-2-cross-validation1/
+
