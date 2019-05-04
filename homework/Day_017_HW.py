@@ -46,11 +46,14 @@ df_train = pd.read_csv(data_path + 'titanic_train.csv')
 df_test = pd.read_csv(data_path + 'titanic_test.csv')
 df_train.shape
 
+import warnings
+warnings.filterwarnings('ignore')
+
 #%%
 item_dict = {}
 for item in df_train.columns:
     item_dict[item] = df_train[item].unique()
-item_dict
+# item_dict
 
 #%%
 # 程式區塊 B
