@@ -12,7 +12,7 @@ np.random.seed(1)
 import matplotlib
 import matplotlib.pyplot as plt
 get_ipython().magic('matplotlib inline')
-([{((()))}])Bracket Pair Colorizer
+# ([{((()))}])Bracket Pair Colorizer
 
 #%% [markdown]
 # ### 負相關

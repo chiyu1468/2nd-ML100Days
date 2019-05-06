@@ -1,4 +1,14 @@
 
+import warnings
+warnings.filterwarnings('ignore')
+
+===================================
+Day 7 百分位數
+------
+Pandas 內建方法比較快
+q_all = [app_train['AMT_ANNUITY'].quantile(i) for i in np.arange(0,1.01,0.01)]
+
+
 ===================================
 Day 11 頗完整的例子
 ------
