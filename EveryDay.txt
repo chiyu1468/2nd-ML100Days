@@ -63,3 +63,33 @@ df.isnull().sum().sort_values(ascending=False).head()
 概念:
 https://morvanzhou.github.io/tutorials/machine-learning/sklearn/3-2-cross-validation1/
 
+
+===================================
+Day 20 21 探討資料偏移與處理離群資料點
+------
+df['1stFlrSF'].clip(lower_bound, upper_bound)
+
+keep_indexs = (df['1stFlrSF']> lower_bound) & (df['1stFlrSF']< upper_bound)
+df_drop = df[keep_indexs]
+
+np.log1p
+
+boxcox
+
+===================================
+Day 22
+------
+這個作業有點硬套，我不懂 one hot encode 為何可以用 LinearRegression 來處理
+
+===================================
+Day 23
+------
+mean Encoding 語法可以用
+mean_df = data.groupby([c])['Survived'].mean().reset_index()
+mean_df.columns = [c, f'{c}_mean']
+
+===================================
+Day 24
+------
+df.select_dtypes(include=["object"]).apply(pd.Series.nunique)
+count_df = df.groupby(['Ticket'])['Name'].agg({'Ticket_Count':'size'}).reset_index()
