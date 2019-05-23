@@ -10,7 +10,7 @@
 
 # ## 參考資料:
 # * [Deep dive into multi-label classification..! (With detailed Case Study)](https://towardsdatascience.com/journey-to-the-center-of-multi-label-classification-384c40229bff)
-# * [深度學習—多標籤分類問題](https://codertw.com/%E7%A8%8B%E5%BC%8F%E8%AA%9E%E8%A8%80/404276/) 
+# * [深度學習—多標籤分類問題](https://codertw.com/%E7%A8%8B%E5%BC%8F%E8%AA%9E%E8%A8%80/404276/)
 # * [多標籤分類(multi-label classification)](https://www.itread01.com/content/1543650558.html)
 # 
 # ## 一些 Kaggle 競賽:
