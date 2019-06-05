@@ -56,9 +56,7 @@ print("Acuuracy: ", acc)
 
 
 #%%
-print(iris.feature_names)
-
-#%%
+print("Features: ", iris.feature_names)
 print("Feature importance: ", clf.feature_importances_)
 
 #%%
@@ -97,8 +95,12 @@ y_pred = clf.predict(x_test)
 acc = metrics.accuracy_score(y_test, y_pred)
 print("Acuuracy: ", acc)
 
+#%%
+print("Features: ", wine.feature_names)
+print("Feature importance: ", clf.feature_importances_)
+
 #%% 
 dot_data = export_graphviz(clf, out_file=None, feature_names=wine.feature_names,  
     class_names=wine.target_names, filled=True, rounded=True, special_characters=True)
 graph = graphviz.Source(dot_data)
-graph.render('dtree_render',view=True, format='png')
+graph.render('Day_042_dtree_render',view=True, format='png')
