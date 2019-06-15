@@ -1,40 +1,40 @@
 
-['User_id', 'Merchant_id', 'Coupon_id', 
-'Discount_rate', 'Distance','Date_received', 
-'Date', 'discount_rate', 'discount_man',
-'discount_jian', 'discount_type']
+# ['User_id', 'Merchant_id', 'Coupon_id', 
+# 'Discount_rate', 'Distance','Date_received', 
+# 'Date', 'discount_rate', 'discount_man',
+# 'discount_jian', 'discount_type']
 
-dfoff.groupby("Discount_rate").size()
-b = dfoff[dfoff["Discount_rate"] == '0.7']
+# dfoff.groupby("Discount_rate").size()
+# b = dfoff[dfoff["Discount_rate"] == '0.7']
 
-# 研究一下有用優惠卷的消費模式
-# 在有用優惠卷的狀況下，分析取得優惠卷與消費日期差距
-b=dfoff[~dfoff['Date_received'].isna()] # 篩選掉沒有卷的
-b=b[~b['Date'].isna()] # 再篩選掉沒有用卷的
-b['interval']=b['Date']-b['Date_received']
-b.groupby('interval').size() # print
+# # 研究一下有用優惠卷的消費模式
+# # 在有用優惠卷的狀況下，分析取得優惠卷與消費日期差距
+# b=dfoff[~dfoff['Date_received'].isna()] # 篩選掉沒有卷的
+# b=b[~b['Date'].isna()] # 再篩選掉沒有用卷的
+# b['interval']=b['Date']-b['Date_received']
+# b.groupby('interval').size() # print
 
-# 長方條圖
-fig, ax = plt.subplots()
-b['interval'].hist(ax=ax, bins=200)
-ax.set_yscale('log')
-# 看單筆數據
-b[b['interval']==28.0].shape
+# # 長方條圖
+# fig, ax = plt.subplots()
+# b['interval'].hist(ax=ax, bins=200)
+# ax.set_yscale('log')
+# # 看單筆數據
+# b[b['interval']==28.0].shape
 
-# 依照商家分類優惠卷
-d = b.groupby('Merchant_id').size().sort_values(ascending=False) #print
-d = d[d.values > 300]
-d = d.keys()
+# # 依照商家分類優惠卷
+# d = b.groupby('Merchant_id').size().sort_values(ascending=False) #print
+# d = d[d.values > 300]
+# d = d.keys()
 
-b['Merchant_id'] = b['Merchant_id'].apply(lambda x: x if x in d else 0 )
+# b['Merchant_id'] = b['Merchant_id'].apply(lambda x: x if x in d else 0 )
 
-c=b[b['Merchant_id'] == 2099]
-c['interval'].hist()
+# c=b[b['Merchant_id'] == 2099]
+# c['interval'].hist()
 
-def checkNaRow(df):
-    for k in df.columns:
-        t = df[df[k].isna()].shape
-        print("{} has {} NaN row.".format(k,t[0]))
+# def checkNaRow(df):
+#     for k in df.columns:
+#         t = df[df[k].isna()].shape
+#         print("{} has {} NaN row.".format(k,t[0]))
 
 
 
@@ -126,7 +126,7 @@ def processData(df, sortTarget=True, discartWaive=True, onehotMerchant=False, we
         df['Merchant_id'] = df['Merchant_id'].apply(lambda x: x if x in main_merchant else 0 )
         tmpdf = pd.get_dummies(df['Merchant_id'].astype(str), prefix='Mer_')
         df = pd.concat([df,tmpdf],axis=1, join_axes=[df.index])
-        df = df.drop(['Merchant_id'],axis=1)
+
 
     if week_on:
         # weekday acquired coupon
@@ -194,7 +194,7 @@ def processData(df, sortTarget=True, discartWaive=True, onehotMerchant=False, we
 dfoff = processData(dfoff, onehotMerchant=True)
 
 dfoff_used_target = dfoff['Date'] - dfoff['Date_received']
-dfoff_used = dfoff.drop(['Date', 'Date_received'],axis=1)
+dfoff_used = dfoff.drop(['Date', 'Date_received', 'Merchant_id'],axis=1)
 dfoff_used = dfoff_used.drop(['User_id', 'Coupon_id', 'Discount_rate', 'discount_man'],axis=1)
 
 x_train, x_valid, y_train, y_valid = train_test_split(
@@ -297,7 +297,7 @@ def check_model(data, predictors):
     }
 
     folder = StratifiedKFold(n_splits=3, shuffle=True)
-    
+
     grid_search = GridSearchCV(
         model, 
         parameters, 
