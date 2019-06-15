@@ -31,6 +31,10 @@ b['Merchant_id'] = b['Merchant_id'].apply(lambda x: x if x in d else 0 )
 c=b[b['Merchant_id'] == 2099]
 c['interval'].hist()
 
+def checkNaRow(df):
+    for k in df.columns:
+        t = df[df[k].isna()].shape
+        print("{} has {} NaN row.".format(k,t[0]))
 
 
 
@@ -48,11 +52,11 @@ from sklearn.model_selection import KFold, train_test_split, StratifiedKFold, cr
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import SGDClassifier, LogisticRegression
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import log_loss, roc_auc_score, auc, roc_curve
+from sklearn.metrics import log_loss, roc_auc_score, auc, roc_curve, accuracy_score
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
 
 
-#%%
 dfoff = pd.read_csv("./data/ml100marathon/train_offline.csv")
 dftest = pd.read_csv("./data/ml100marathon/test_offline.csv")
 dftest = dftest[~dftest.Coupon_id.isna()]
@@ -61,39 +65,10 @@ print("Training Dataset: ",dfoff.shape)
 print("Testing Dataset: ", dftest.shape)
 # dfoff.head()
 
-# #%%
-# example answer 
-# dfsample = pd.read_csv("./data/ml100marathon/sample_submission.csv")
 
 #%%
-"""
-According to the definition, 
-1) buy with coupon within (include) 15 days ==> 1
-2) buy with coupon but out of 15 days ==> 0
-3) buy without coupon ==> -1 (we don't care)
-"""
-# def label(row):
-#     if np.isnan(row['Date_received']):
-#         return -1
-#     if not np.isnan(row['Date']):
-#         td = pd.to_datetime(row['Date'], format='%Y%m%d') -  pd.to_datetime(row['Date_received'], format='%Y%m%d')
-#         if td <= pd.Timedelta(15, 'D'):
-#             return 1
-#     return 0
+weekdaycols = ['weekday_' + str(i) for i in range(1,8)] # parameter for processData
 
-# dfoff["label"] = dfoff.apply(label, axis=1)
-# dfoff["label"].value_counts()
-
-dfoff = dfoff[~dfoff['Date_received'].isna()] # 篩選掉沒有卷的
-dfoff_used = dfoff[~dfoff['Date'].isna()] # 再篩選掉沒有用卷的
-# 依照主要商家做 one-hot encode (主要商家目前訂為 有卷有消費數量達到 300)
-main_merchant = dfoff_used.groupby('Merchant_id').size().sort_values(ascending=False) #print
-main_merchant = main_merchant[main_merchant.values > 300].keys()
-print(main_merchant)
-dfoff_used['Merchant_id'] = dfoff_used['Merchant_id'].apply(lambda x: x if x in main_merchant else 0 )
-
-
-#%%
 # Generate features - weekday acquired coupon
 def getWeekday(row):
     if (np.isnan(row)) or (row==-1):
@@ -101,29 +76,6 @@ def getWeekday(row):
     else:
         return pd.to_datetime(row, format = "%Y%m%d").dayofweek+1 # add one to make it from 0~6 -> 1~7
 
-dfoff['weekday'] = dfoff['Date_received'].apply(getWeekday)
-dftest['weekday'] = dftest['Date_received'].apply(getWeekday)
-
-# weekend  週末為 1
-dfoff['weekend'] = dfoff['weekday'].astype('str').apply(lambda x : 1 if x in [6,7] else 0 ) # apply to trainset
-dftest['weekend'] = dftest['weekday'].astype('str').apply(lambda x : 1 if x in [6,7] else 0 ) # apply to testset
-
-weekdaycols = ['weekday_' + str(i) for i in range(1,8)]
-print(weekdaycols)
-
-tmpdf = pd.get_dummies(dfoff['weekday'].replace(-1, np.nan))
-tmpdf.columns = weekdaycols
-dfoff[weekdaycols] = tmpdf
-
-tmpdf = pd.get_dummies(dftest['weekday'].replace(-1, np.nan))
-tmpdf.columns = weekdaycols
-dftest[weekdaycols] = tmpdf
-
-
-# TODO
-# 是否加入特殊節日 例如情人節 父親節
-
-#%%
 # Generate features - coupon discount and distance
 def getDiscountType(row):
     if row == 'nan':
@@ -157,17 +109,138 @@ def getDiscountJian(row):
     else:
         return np.nan
 
-def processData(df):
-    
+# Here pre-process Data
+def processData(df, sortTarget=True, discartWaive=True, onehotMerchant=False, week_on=True, discint_on=True, distance_on=True):
+    if sortTarget | onehotMerchant: # 篩選掉沒有卷的 這個基本上要開 不然 discartWaive 會有問題
+        df = df[~df['Date_received'].isna()] 
+    if discartWaive: # 篩選掉沒有用卷的
+        df = df[~df['Date'].isna()] 
+    else: # 若不篩選沒有用卷的 則創造欄位分辨使用狀況
+        df['discount_type'] = df['Discount_rate'].astype('str').apply(getDiscountType)
+
+    if onehotMerchant:
+        print("merchant process")
+        # 依照主要商家做 one-hot encode (主要商家目前訂為 有卷有消費數量達到 300)
+        main_merchant = df.groupby('Merchant_id').size().sort_values(ascending=False) #print
+        main_merchant = main_merchant[main_merchant.values > 300].keys()
+        df['Merchant_id'] = df['Merchant_id'].apply(lambda x: x if x in main_merchant else 0 )
+        tmpdf = pd.get_dummies(df['Merchant_id'].astype(str), prefix='Mer_')
+        df = pd.concat([df,tmpdf],axis=1, join_axes=[df.index])
+        df = df.drop(['Merchant_id'],axis=1)
+
+    if week_on:
+        # weekday acquired coupon
+        print("weekday process")
+        df['weekday'] = df['Date_received'].apply(getWeekday)
+        df['weekend'] = df['weekday'].astype('str').apply(lambda x : 1 if x in [6,7] else 0 )
+        tmpdf = pd.get_dummies(df['weekday'].replace(-1, np.nan))
+        tmpdf.columns = weekdaycols
+        df[weekdaycols] = tmpdf
+
+    if discint_on:
     # convert discunt_rate
-    df['discount_rate'] = df['Discount_rate'].astype('str').apply(convertRate)
-    df['discount_man'] = df['Discount_rate'].astype('str').apply(getDiscountMan)
-    df['discount_jian'] = df['Discount_rate'].astype('str').apply(getDiscountJian)
-    df['discount_type'] = df['Discount_rate'].astype('str').apply(getDiscountType)
-    
+        print("discunt rate process")
+        df['discount_rate'] = df['Discount_rate'].astype('str').apply(convertRate)
+        df['discount_man'] = df['Discount_rate'].astype('str').apply(getDiscountMan)
+        df['discount_jian'] = df['Discount_rate'].astype('str').apply(getDiscountJian)
+
+        # 中位數填充缺值
+        df.loc[df.discount_jian.isna(), 'discount_jian'] = df['discount_jian'].quantile(0.5)
+        df.loc[df.discount_man.isna(), 'discount_man'] = df['discount_man'].quantile(0.5)
+
     # convert distance
-    df.loc[df.Distance.isna(), "Distance"] = 99
+    if distance_on:
+        print("distance process")
+        df.loc[df.Distance.isna(), "Distance"] = 99
+
     return df
+
+
+# #%%
+# example answer 
+# dfsample = pd.read_csv("./data/ml100marathon/sample_submission.csv")
+
+# #%%
+# """
+# According to the definition, 
+# 1) buy with coupon within (include) 15 days ==> 1
+# 2) buy with coupon but out of 15 days ==> 0
+# 3) buy without coupon ==> -1 (we don't care)
+# """
+# def label(row):
+#     if np.isnan(row['Date_received']):
+#         return -1
+#     if not np.isnan(row['Date']):
+#         td = pd.to_datetime(row['Date'], format='%Y%m%d') -  pd.to_datetime(row['Date_received'], format='%Y%m%d')
+#         if td <= pd.Timedelta(15, 'D'):
+#             return 1
+#     return 0
+
+# dfoff["label"] = dfoff.apply(label, axis=1)
+# dfoff["label"].value_counts()
+
+# dfoff = dfoff[~dfoff['Date_received'].isna()] # 篩選掉沒有卷的
+# dfoff_used = dfoff[~dfoff['Date'].isna()] # 再篩選掉沒有用卷的
+# # 依照主要商家做 one-hot encode (主要商家目前訂為 有卷有消費數量達到 300)
+# main_merchant = dfoff_used.groupby('Merchant_id').size().sort_values(ascending=False) #print
+# main_merchant = main_merchant[main_merchant.values > 300].keys()
+# dfoff_used['Merchant_id'] = dfoff_used['Merchant_id'].apply(lambda x: x if x in main_merchant else 0 )
+# tmpdf = pd.get_dummies(dfoff_used['Merchant_id'].astype(str), prefix='Mer_')
+# dfoff_used = pd.concat([dfoff_used,tmpdf],axis=1, join_axes=[dfoff_used.index])
+# dfoff_used = dfoff_used.drop(['Merchant_id'],axis=1)
+
+#%% 
+# dfoff_used = processData(dfoff_used)
+dfoff = processData(dfoff, onehotMerchant=True)
+
+dfoff_used_target = dfoff['Date'] - dfoff['Date_received']
+dfoff_used = dfoff.drop(['Date', 'Date_received'],axis=1)
+dfoff_used = dfoff_used.drop(['User_id', 'Coupon_id', 'Discount_rate', 'discount_man'],axis=1)
+
+x_train, x_valid, y_train, y_valid = train_test_split(
+    dfoff_used, dfoff_used_target, test_size=0.10, random_state=4)
+
+
+#%%
+def checkNaRow(df):
+    for k in df.columns:
+        t = df[df[k].isna()].shape
+        print("{} has {} NaN row.".format(k,t[0]))
+
+checkNaRow(x_train)
+
+#%%
+clf = BayesianGaussianMixture(n_components=4)
+clf.fit(x_train, y_train)
+
+y_pred = clf.predict(x_valid)
+
+acc = accuracy_score(y_valid, y_pred)
+print("Acuuracy: ", acc)
+
+
+#%%
+dfoff['weekday'] = dfoff['Date_received'].apply(getWeekday)
+dftest['weekday'] = dftest['Date_received'].apply(getWeekday)
+
+# weekend  週末為 1
+dfoff['weekend'] = dfoff['weekday'].astype('str').apply(lambda x : 1 if x in [6,7] else 0 ) # apply to trainset
+dftest['weekend'] = dftest['weekday'].astype('str').apply(lambda x : 1 if x in [6,7] else 0 ) # apply to testset
+
+weekdaycols = ['weekday_' + str(i) for i in range(1,8)]
+print(weekdaycols)
+
+tmpdf = pd.get_dummies(dfoff['weekday'].replace(-1, np.nan))
+tmpdf.columns = weekdaycols
+dfoff[weekdaycols] = tmpdf
+
+tmpdf = pd.get_dummies(dftest['weekday'].replace(-1, np.nan))
+tmpdf.columns = weekdaycols
+dftest[weekdaycols] = tmpdf
+
+
+# TODO
+# 是否加入特殊節日 例如情人節 父親節
 
 #%%
 dfoff = processData(dfoff)
